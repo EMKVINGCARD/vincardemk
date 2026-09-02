@@ -8,6 +8,16 @@
       "role": "admin",
       "is_active": true,
       "created_at": "2026-09-02T11:51:15.120Z"
+    },
+    {
+      "id": "id-l3o8h0osmtk1cxvq",
+      "username": "ali",
+      "name": "ali özen",
+      "email": "",
+      "role": "admin",
+      "is_active": true,
+      "password": "$2a$10$aj0mpy6cs50OL6omkcH5jevZlYoViW8KwhZB.mlkMzm.DfYkwSRJ2",
+      "created_at": "2026-09-02T11:51:44.847Z"
     }
   ],
   "categories": [
