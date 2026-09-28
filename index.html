@@ -911,7 +911,7 @@ function renderMovements(){
         ${c.quantity?`<td class="text-right mono font-semibold">${m.type==="in"?"+":"−"}${fmtNum(m.quantity)}</td>`:""}
         ${c.location?`<td>${m.target_location||"—"}</td>`:""}
         ${c.reason?`<td class="text-sm text-slate-500">${m.reason||"—"}</td>`:""}
-        <td><button class="btn btn-ghost btn-sm" onclick="deleteMovement('${m.id}')">Sil</button></td>
+        <td class="whitespace-nowrap"><button class="btn btn-outline btn-sm" onclick="editMovement('${m.id}')">Düzelt</button><button class="btn btn-ghost btn-sm" onclick="deleteMovement('${m.id}')">Sil</button></td>
       </tr>`).join(""):`<tr><td colspan="8" class="text-center text-slate-500 py-10">Hareket bulunamadı</td></tr>`}</tbody>
     </table></div>`;
 }
@@ -958,7 +958,7 @@ function pickMvProduct(id){
   sel.classList.remove("hidden");
 }
 function recordMovementAudit(action,m,extra){const u=currentUser();state.movement_audit=state.movement_audit||[];state.movement_audit.push({id:uid(),action,product_id:m.product_id,product_code:m.product_code,product_name:m.product_name,type:m.type,quantity:m.quantity,target_location:m.target_location||null,reason:m.reason||null,user_id:u&&u.id,user_name:u&&(u.name||u.username),created_at:nowISO(),extra:extra||null});}
-function renderMovementAudit(){const logs=[...(state.movement_audit||[])].sort((a,b)=>b.created_at.localeCompare(a.created_at));document.getElementById("adminPanel").innerHTML=`<div class="card p-5"><div class="flex items-center justify-between gap-3 flex-wrap mb-4"><div><h3 class="font-semibold">Stok Hareketleri İşlem Geçmişi</h3><p class="text-sm text-slate-500 mt-1">Kullanıcıların yaptığı stok giriş, çıkış ve silme işlemleri.</p></div><span class="badge bg-slate-100 text-slate-700">${logs.length} kayıt</span></div><div class="overflow-x-auto"><table><thead><tr><th>Tarih</th><th>Kullanıcı</th><th>İşlem</th><th>Ürün Kodu</th><th>Ürün Adı</th><th>Miktar</th><th>Lokasyon</th><th>Açıklama</th></tr></thead><tbody>${logs.length?logs.map(x=>`<tr><td class="text-xs text-slate-500">${fmtDate(x.created_at)}</td><td class="font-medium">${x.user_name||"—"}</td><td>${x.action==="Stok girişi"?`<span class="badge bg-emerald-100 text-emerald-700">GİRİŞ</span>`:x.action==="Stok çıkışı"?`<span class="badge bg-rose-100 text-rose-700">ÇIKIŞ</span>`:`<span class="badge bg-slate-100 text-slate-700">SİLİNDİ</span>`}</td><td class="mono text-xs">${x.product_code||"—"}</td><td>${x.product_name||"—"}</td><td class="mono">${x.quantity===null||x.quantity===undefined?"—":fmtNum(x.quantity)}</td><td>${x.target_location||"—"}</td><td class="text-sm text-slate-500">${x.reason||x.extra||"—"}</td></tr>`).join(""):`<tr><td colspan="8" class="text-center text-slate-500 py-10">Henüz stok işlem geçmişi yok.</td></tr>`}</tbody></table></div></div>`;}
+function renderMovementAudit(){const logs=[...(state.movement_audit||[])].sort((a,b)=>b.created_at.localeCompare(a.created_at));document.getElementById("adminPanel").innerHTML=`<div class="card p-5"><div class="flex items-center justify-between gap-3 flex-wrap mb-4"><div><h3 class="font-semibold">Stok Hareketleri İşlem Geçmişi</h3><p class="text-sm text-slate-500 mt-1">Kullanıcıların yaptığı stok giriş, çıkış, düzeltme ve silme işlemleri.</p></div><span class="badge bg-slate-100 text-slate-700">${logs.length} kayıt</span></div><div class="overflow-x-auto"><table><thead><tr><th>Tarih</th><th>Kullanıcı</th><th>İşlem</th><th>Ürün Kodu</th><th>Ürün Adı</th><th>Miktar</th><th>Lokasyon</th><th>Açıklama</th></tr></thead><tbody>${logs.length?logs.map(x=>`<tr><td class="text-xs text-slate-500">${fmtDate(x.created_at)}</td><td class="font-medium">${x.user_name||"—"}</td><td>${x.action==="Stok girişi"?`<span class="badge bg-emerald-100 text-emerald-700">GİRİŞ</span>`:x.action==="Stok çıkışı"?`<span class="badge bg-rose-100 text-rose-700">ÇIKIŞ</span>`:x.action==="Stok hareketi düzeltildi"?`<span class="badge bg-blue-100 text-blue-700">DÜZELTİLDİ</span>`:`<span class="badge bg-slate-100 text-slate-700">SİLİNDİ</span>`}</td><td class="mono text-xs">${x.product_code||"—"}</td><td>${x.product_name||"—"}</td><td class="mono">${x.quantity===null||x.quantity===undefined?"—":fmtNum(x.quantity)}</td><td>${x.target_location||"—"}</td><td class="text-sm text-slate-500">${x.reason||x.extra||"—"}</td></tr>`).join(""):`<tr><td colspan="8" class="text-center text-slate-500 py-10">Henüz stok işlem geçmişi yok.</td></tr>`}</tbody></table></div></div>`;}
 function saveMovement(e,type){
   e.preventDefault();const fd=new FormData(e.target);const d={type};fd.forEach((v,k)=>d[k]=v);d.quantity=+d.quantity;
   const p=state.products.find(x=>x.id===d.product_id);if(!p){toast("Ürün seçin","error");return;}
@@ -971,6 +971,44 @@ function saveMovement(e,type){
   state.movements.push(movement);recordMovementAudit(type==="in"?"Stok girişi":"Stok çıkışı",movement);
   p.quantity+=delta;p.updated_at=nowISO();
   save();closeModal();renderMovements();toast("Hareket kaydedildi");
+}
+function editMovement(id){
+  const m=state.movements.find(x=>x.id===id);if(!m)return;
+  if(!currentUser()){toast("Bu işlem için giriş yapmalısınız","error");return;}
+  const p=state.products.find(x=>x.id===m.product_id);
+  mvPicker={q:"",productId:""};
+  openModal(`<h3 class="text-lg font-semibold mb-2">Stok Hareketini Düzelt</h3><p class="text-sm text-slate-500 mb-4">${m.type==="in"?"Stok girişi":"Stok çıkışı"}, ${fmtNum(m.quantity)} miktarı korunur. Bu düzeltmede yalnızca ürün değiştirilebilir.</p><form onsubmit="saveMovementEdit(event,'${id}')" class="space-y-3"><div><label class="text-sm">Ürün Ara *</label><input class="input mt-1" id="mvSearch" placeholder="Kod veya ürün adı..." autocomplete="off" oninput="onMvSearch(this.value)" onfocus="renderMvList()" /><input type="hidden" name="product_id" id="mvProductId" required /><div id="mvSelected" class="mt-2 hidden"></div><div id="mvList" class="mt-1 border border-slate-200 rounded-md max-h-56 overflow-y-auto hidden bg-white"></div></div><div class="flex justify-end gap-2"><button type="button" class="btn btn-outline" onclick="closeModal()">İptal</button><button type="submit" class="btn btn-primary">Kaydet</button></div></form>`,true);
+  setTimeout(()=>{if(p)pickMvProduct(p.id);else renderMvList();document.getElementById("mvSearch")?.focus();},50);
+}
+function saveMovementEdit(e,id){
+  e.preventDefault();
+  const m=state.movements.find(x=>x.id===id);if(!m)return;
+  if(!currentUser()){toast("Bu işlem için giriş yapmalısınız","error");return;}
+  const targetId=document.getElementById("mvProductId")?.value;
+  const nextProduct=state.products.find(x=>x.id===targetId);
+  if(!nextProduct){toast("Yeni ürün seçin","error");return;}
+  const quantity=Number(m.quantity);
+  if(!Number.isFinite(quantity)||quantity<=0){toast("Hareket miktarı geçersiz; ürün değiştirilemedi","error");return;}
+  const oldProduct=state.products.find(x=>x.id===m.product_id);
+  const movementDelta=m.type==="in"?quantity:-quantity;
+  let oldNext=null,newNext=null;
+  if(oldProduct&&oldProduct.id===nextProduct.id){
+    oldNext=(+oldProduct.quantity||0);
+  }else{
+    if(oldProduct){oldNext=(+oldProduct.quantity||0)-movementDelta;if(oldNext< -1e-9){toast("Eski üründen bu hareket geri alındığında stok negatife düşecek; düzeltme yapılamadı","error");return;}oldNext=Math.max(0,oldNext);}
+    newNext=(+nextProduct.quantity||0)+movementDelta;
+    if(newNext< -1e-9){toast("Yeni üründe bu çıkışı karşılayacak stok yok","error");return;}
+    newNext=Math.max(0,newNext);
+  }
+  const oldLabel=`${m.product_code||"—"} — ${m.product_name||"Ürün bulunamadı"}`;
+  const newLabel=`${nextProduct.code||"—"} — ${nextProduct.name}`;
+  const auditExtra=`Ürün: ${oldLabel} → ${newLabel}${m.reason?` | Önceki açıklama: ${m.reason}`:""}`;
+  recordMovementAudit("Stok hareketi düzeltildi",{...m,reason:null},auditExtra);
+  const now=nowISO();
+  if(oldProduct&&oldProduct.id!==nextProduct.id){oldProduct.quantity=oldNext;oldProduct.updated_at=now;}
+  if(newNext!==null){nextProduct.quantity=newNext;nextProduct.updated_at=now;}
+  m.product_id=nextProduct.id;m.product_code=nextProduct.code;m.product_name=nextProduct.name;m.quantity=quantity;m.updated_at=now;
+  save();closeModal();renderMovements();toast("Hareket düzeltildi; stoklar güncellendi");
 }
 function deleteMovement(id){const m=state.movements.find(x=>x.id===id);if(!m)return;openModal(`<h3 class="text-lg font-semibold mb-2 text-rose-700">Stok Hareketini Sil</h3><p class="text-sm text-slate-600 mb-3">Bu işlem stoğu geri alır. Onaylamak için <b>SIL</b> yazın.</p><input id="delMoveInput" class="input mono" placeholder="SIL" oninput="document.getElementById('delMoveBtn').disabled = this.value !== 'SIL'" /><div class="flex justify-end gap-2 mt-4"><button class="btn btn-outline" onclick="closeModal()">İptal</button><button id="delMoveBtn" class="btn btn-danger" disabled onclick="confirmDeleteMovement('${id}')">Sil</button></div>`);setTimeout(()=>document.getElementById("delMoveInput")?.focus(),50);}
 function confirmDeleteMovement(id){const input=document.getElementById("delMoveInput");if(!input||input.value!=="SIL"){toast("Onay için SIL yazmalısınız","error");return;}const m=state.movements.find(x=>x.id===id);if(!m)return;const p=state.products.find(x=>x.id===m.product_id);if(p){p.quantity+=m.type==="in"?-m.quantity:m.quantity;}recordMovementAudit("Stok hareketi silindi",m,"Silme sonrası stok geri alındı");state.movements=state.movements.filter(x=>x.id!==id);save();closeModal();renderMovements();toast("Silindi");}
