@@ -292,7 +292,10 @@ async function ghPutStore(stateObj, sha){
 function mergeStates(local, remote){
   const mvMap = {};
   (remote.movements || []).forEach(m => mvMap[m.id] = m);
-  (local.movements  || []).forEach(m => { if(!mvMap[m.id]) mvMap[m.id] = m; });
+  (local.movements  || []).forEach(m => {
+    const remoteMovement=mvMap[m.id];
+    if(!remoteMovement || (m.updated_at && (!remoteMovement.updated_at || m.updated_at>=remoteMovement.updated_at))) mvMap[m.id]=m;
+  });
   return {
     users:      local.users      || remote.users      || [],
     categories: local.categories || remote.categories || [],
