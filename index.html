@@ -659,6 +659,7 @@ function renderProducts(){
   });
   const catMap=Object.fromEntries(state.categories.map(c=>[c.id,c]));
   const isAdmin = u.role === "admin";
+  const canAddProduct = !!u;
   const hasAny = state.products.length > 0;
   document.getElementById("pageBody").innerHTML=`
     <div class="flex justify-between items-end flex-wrap gap-4 mb-6">
@@ -668,7 +669,7 @@ function renderProducts(){
         <label class="btn btn-outline cursor-pointer">Excel'den Yükle<input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="importProductsExcel(event)" /></label>
         <button class="btn btn-ghost btn-sm" onclick="downloadProductTemplate()">Şablon</button>`:""}
         ${isAdmin?`<button class="btn btn-danger" onclick="deleteAllProducts()" ${hasAny?"":"disabled"} data-testid="delete-all-products-btn">Tümünü Sil</button>`:""}
-        ${isAdmin?`<button class="btn btn-primary" onclick="productModal()">+ Yeni Ürün</button>`:""}
+        ${canAddProduct?`<button class="btn btn-primary" onclick="productModal()">+ Yeni Ürün</button>`:""}
       </div>
     </div>
     <div class="card p-4 mb-4 flex gap-3 flex-wrap">
@@ -698,7 +699,9 @@ function renderProducts(){
     </table></div>`;
 }
 function productModal(id){
-  if(!currentUser() || currentUser().role !== "admin"){toast("Bu işlem için yetkiniz yok","error");return;}
+  const u=currentUser();
+  if(!u || (id && u.role !== "admin")){toast("Bu işlem için yetkiniz yok","error");return;}
+  const isAdmin=u.role==="admin";
   const p=id?state.products.find(x=>x.id===id):{code:"",name:"",category_id:"",unit:"adet",quantity:0,critical_level:0,unit_price:0,location:"",description:""};
   openModal(`<h3 class="text-lg font-semibold mb-4">${id?"Ürünü Düzenle":"Yeni Ürün"}</h3>
     <form onsubmit="saveProduct(event,'${id||""}')" class="grid grid-cols-2 gap-4">
@@ -706,7 +709,7 @@ function productModal(id){
       <div><label class="text-sm">Ürün Adı *</label><input required class="input mt-1" name="name" value="${p.name}" /></div>
       <div><label class="text-sm">Kategori</label><select class="input mt-1" name="category_id"><option value="">— Yok —</option>${state.categories.map(c=>`<option value="${c.id}" ${p.category_id===c.id?"selected":""}>${c.name}</option>`).join("")}</select></div>
       <div><label class="text-sm">Birim</label><input class="input mt-1" name="unit" value="${p.unit}" /></div>
-      <div><label class="text-sm">Miktar</label><input type="number" step="0.01" class="input mt-1" name="quantity" value="${p.quantity}" /></div>
+      <div><label class="text-sm">Miktar</label><input type="number" step="0.01" class="input mt-1" name="quantity" value="${isAdmin?p.quantity:0}" ${isAdmin?"":"readonly"} />${isAdmin?"":`<p class="text-xs text-slate-500 mt-1">Kullanıcının eklediği ürün 0 stokla başlar. Stok girişini Stok Hareketleri bölümünden yapın.</p>`}</div>
       <div><label class="text-sm">Kritik Seviye</label><input type="number" step="0.01" class="input mt-1" name="critical_level" value="${p.critical_level}" /></div>
       <div><label class="text-sm">Birim Fiyat (TL)</label><input type="number" step="0.01" class="input mt-1" name="unit_price" value="${p.unit_price}" /></div>
       <div><label class="text-sm">Konum</label><input class="input mt-1" name="location" value="${p.location||""}" /></div>
@@ -716,8 +719,11 @@ function productModal(id){
 }
 function saveProduct(e,id){
   e.preventDefault();
-  if(!currentUser() || currentUser().role !== "admin"){toast("Bu işlem için yetkiniz yok","error");return;}const fd=new FormData(e.target);const data={};fd.forEach((v,k)=>data[k]=v);
+  const u=currentUser();
+  if(!u || (id && u.role !== "admin")){toast("Bu işlem için yetkiniz yok","error");return;}
+  const fd=new FormData(e.target);const data={};fd.forEach((v,k)=>data[k]=v);
   ["quantity","critical_level","unit_price"].forEach(k=>data[k]=+data[k]||0);
+  if(!id&&u.role!=="admin")data.quantity=0;
   if(!id && state.products.some(p=>p.code===data.code)){toast("Bu ürün kodu zaten var","error");return;}
   if(!id){
     const nameKey = String(data.name||"").trim().toLocaleLowerCase("tr-TR");
